@@ -42,6 +42,12 @@ alembic upgrade head
 uvicorn app.main:app --reload
 \`\`\`
 
+## Auth Configuration
+
+- `GOOGLE_CLIENT_ID` - optional; used to validate Google ID tokens
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` - optional; service account JSON used to validate Firebase-issued Google ID tokens
+- `FIREBASE_PROJECT_ID` - optional override of project ID (otherwise taken from the service account JSON)
+
 ## API Documentation
 
 Once running, visit:

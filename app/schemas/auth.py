@@ -2,12 +2,12 @@
 Pydantic schemas for Authentication API.
 """
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
     """Login request schema."""
-    email: EmailStr
+    email: EmailStr = Field(validation_alias=AliasChoices("email", "username"))
     password: str
 
 
@@ -17,6 +17,19 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int  # seconds
+
+
+class RegisterRequest(BaseModel):
+    """Registration request schema."""
+    email: EmailStr = Field(validation_alias=AliasChoices("email", "username"))
+    password: str = Field(..., min_length=8)
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    handle: str | None = Field(default=None, min_length=3, max_length=50)
+
+
+class GoogleLoginRequest(BaseModel):
+    """Google OAuth login request."""
+    id_token: str = Field(..., min_length=10)
 
 
 class RefreshTokenRequest(BaseModel):

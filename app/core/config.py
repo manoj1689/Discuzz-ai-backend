@@ -5,7 +5,7 @@ Handles environment variables with type validation.
 
 from pathlib import Path
 from typing import List, Optional
-from pydantic import field_validator, PostgresDsn
+from pydantic import Field, field_validator, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -53,9 +53,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
-    # AI Services
-    openai_api_key: Optional[str] = None
-    gemini_api_key: Optional[str] = None
+    # Social Auth
+    google_client_id: Optional[str] = None
+    google_application_credentials_json: Optional[str] = None
+    firebase_project_id: Optional[str] = None
 
     # Email
     smtp_host: str = "smtp.gmail.com"
@@ -81,6 +82,14 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = 12
     password_min_length: int = 8
 
+
+    # AI Services
+    openai_api_key: Optional[str] = Field(
+        default=None,
+        alias="NEXT_PUBLIC_OPENAI_API_KEY",
+        description="OpenAI API key sourced from NEXT_PUBLIC_OPENAI_API_KEY"
+    )
+    gemini_api_key: Optional[str] = None
 
 @lru_cache()
 def get_settings() -> Settings:

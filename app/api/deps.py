@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 from fastapi import Depends, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
 from app.core.security import decode_token
@@ -41,7 +42,11 @@ async def get_current_user(
     if not user_id:
         raise AuthenticationError("Invalid token payload")
     
-    result = await db.execute(select(User).where(User.id == int(user_id)))
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.interests))
+        .where(User.id == int(user_id))
+    )
     user = result.scalar_one_or_none()
     
     if not user:

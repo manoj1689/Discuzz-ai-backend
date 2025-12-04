@@ -72,6 +72,8 @@ class UserResponse(BaseModel):
     bio: Optional[str] = None
     location: Optional[str] = None
     website: Optional[str] = None
+    language: Optional[str] = None
+    interests: List[str] = []
     stats: UserStats
     is_verified: bool = False
     created_at: datetime

@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import DbSession, CurrentUser, CurrentUserOptional
 from app.core.exceptions import NotFoundError, AuthorizationError
 from app.models.post import Post
-from app.models.user import User
+from app.models.user import User, followers_table
 from app.schemas.post import (
     PostCreate,
     PostWithInterview,
@@ -69,19 +69,35 @@ async def get_posts(
     """
     offset = (page - 1) * per_page
     
+    filters = [Post.is_deleted == False, Post.is_published == True]
+    
     query = (
         select(Post)
         .options(selectinload(Post.author), selectinload(Post.liked_by))
-        .where(Post.is_deleted == False, Post.is_published == True)
+        .where(*filters)
         .order_by(desc(Post.created_at))
     )
     
     if feed == "following" and current_user:
-        following_ids = [u.id for u in current_user.following]
+        following_ids_result = await db.scalars(
+            select(followers_table.c.followed_id).where(
+                followers_table.c.follower_id == current_user.id
+            )
+        )
+        following_ids = following_ids_result.all()
+        if not following_ids:
+            return PostListResponse(
+                items=[],
+                total=0,
+                page=page,
+                per_page=per_page,
+                has_next=False
+            )
+        filters.append(Post.author_id.in_(following_ids))
         query = query.where(Post.author_id.in_(following_ids))
     
     # Get total count
-    count_query = select(func.count(Post.id)).where(Post.is_deleted == False)
+    count_query = select(func.count(Post.id)).where(*filters)
     total_result = await db.execute(count_query)
     total = total_result.scalar()
     

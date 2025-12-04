@@ -15,7 +15,7 @@ from sqlalchemy.pool import NullPool
 from app.main import app
 from app.db.base import Base
 from app.db.session import get_db
-from app.core.security import create_access_token
+from app.core.security import create_access_token, hash_password
 from app.models.user import User
 
 
@@ -85,13 +85,11 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession) -> User:
     """Create a test user."""
-    from app.core.security import get_password_hash
-    
     user = User(
         email="test@example.com",
-        username="testuser",
-        display_name="Test User",
-        password_hash=get_password_hash("testpassword123")
+        hashed_password=hash_password("Testpassword123"),
+        name="Test User",
+        handle="@testuser"
     )
     db_session.add(user)
     await db_session.commit()

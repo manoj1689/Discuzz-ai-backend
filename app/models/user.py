@@ -5,8 +5,8 @@ User database model.
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Boolean, String, Text, Integer, ForeignKey, Table, Column
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, String, Text, Integer, ForeignKey, Table, Column, func, select
+from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property, declared_attr
 
 from app.db.base import Base
 
@@ -88,7 +88,8 @@ class User(Base):
         primaryjoin=lambda: User.id == followers_table.c.followed_id,
         secondaryjoin=lambda: User.id == followers_table.c.follower_id,
         back_populates="following",
-        foreign_keys=[followers_table.c.followed_id, followers_table.c.follower_id]
+        foreign_keys=[followers_table.c.followed_id, followers_table.c.follower_id],
+        lazy="raise"
     )
     following: Mapped[List["User"]] = relationship(
         "User",
@@ -96,22 +97,34 @@ class User(Base):
         primaryjoin=lambda: User.id == followers_table.c.follower_id,
         secondaryjoin=lambda: User.id == followers_table.c.followed_id,
         back_populates="followers",
-        foreign_keys=[followers_table.c.followed_id, followers_table.c.follower_id]
+        foreign_keys=[followers_table.c.followed_id, followers_table.c.follower_id],
+        lazy="raise"
     )
+    
+    @declared_attr
+    def followers_count(cls) -> Mapped[int]:
+        return column_property(
+            select(func.count(followers_table.c.follower_id))
+            .where(followers_table.c.followed_id == cls.id)
+            .correlate_except(followers_table)
+            .scalar_subquery()
+        )
+    
+    @declared_attr
+    def following_count(cls) -> Mapped[int]:
+        return column_property(
+            select(func.count(followers_table.c.followed_id))
+            .where(followers_table.c.follower_id == cls.id)
+            .correlate_except(followers_table)
+            .scalar_subquery()
+        )
     
     # Interests
     interests: Mapped[List["Interest"]] = relationship(
         secondary=user_interests_table,
-        back_populates="users"
+        back_populates="users",
+        lazy="raise"
     )
-    
-    @property
-    def followers_count(self) -> int:
-        return len(self.followers)
-    
-    @property
-    def following_count(self) -> int:
-        return len(self.following)
 
 
 # Import at end to avoid circular imports

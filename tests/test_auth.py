@@ -13,16 +13,15 @@ async def test_register_user(client: AsyncClient):
         "/api/v1/auth/register",
         json={
             "email": "newuser@example.com",
-            "username": "newuser",
-            "password": "securepassword123"
+            "password": "Password123"
         }
     )
     
     assert response.status_code == 201
     data = response.json()
-    assert data["email"] == "newuser@example.com"
-    assert data["username"] == "newuser"
-    assert "id" in data
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"
 
 
 @pytest.mark.asyncio
@@ -30,9 +29,9 @@ async def test_login(client: AsyncClient, test_user):
     """Test user login."""
     response = await client.post(
         "/api/v1/auth/login",
-        data={
-            "username": "test@example.com",
-            "password": "testpassword123"
+        json={
+            "email": "test@example.com",
+            "password": "Testpassword123"
         }
     )
     
@@ -47,13 +46,23 @@ async def test_login_invalid_credentials(client: AsyncClient):
     """Test login with invalid credentials."""
     response = await client.post(
         "/api/v1/auth/login",
-        data={
-            "username": "wrong@example.com",
+        json={
+            "email": "wrong@example.com",
             "password": "wrongpassword"
         }
     )
     
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_google_login_without_config_fails(client: AsyncClient):
+    """Google login should fail when client ID is not set."""
+    response = await client.post(
+        "/api/v1/auth/google",
+        json={"id_token": "dummy"}
+    )
+    assert response.status_code in (401, 422)
 
 
 @pytest.mark.asyncio

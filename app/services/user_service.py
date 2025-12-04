@@ -85,10 +85,9 @@ class UserService:
         following: User
     ) -> None:
         """Follow a user."""
+        await db.refresh(follower, attribute_names=["following"])
         if following not in follower.following:
             follower.following.append(following)
-            follower.following_count += 1
-            following.followers_count += 1
             await db.commit()
     
     async def unfollow_user(
@@ -98,10 +97,9 @@ class UserService:
         following: User
     ) -> None:
         """Unfollow a user."""
+        await db.refresh(follower, attribute_names=["following"])
         if following in follower.following:
             follower.following.remove(following)
-            follower.following_count -= 1
-            following.followers_count -= 1
             await db.commit()
 
 

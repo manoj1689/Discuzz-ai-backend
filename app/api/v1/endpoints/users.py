@@ -17,6 +17,28 @@ from app.schemas.user import UserResponse, UserPublic, UserUpdate, UserStats, Us
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
+def _user_to_response(user: User) -> UserResponse:
+    """Serialize a user model with interests and stats."""
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        handle=user.handle,
+        avatar_url=user.avatar_url,
+        bio=user.bio,
+        location=user.location,
+        website=user.website,
+        language=user.language,
+        interests=[interest.name for interest in user.interests],
+        stats=UserStats(
+            followers=user.followers_count,
+            following=user.following_count
+        ),
+        is_verified=user.is_verified,
+        created_at=user.created_at
+    )
+
+
 @router.get("/{handle}", response_model=UserPublic)
 async def get_user_by_handle(
     handle: str,
@@ -71,24 +93,14 @@ async def update_current_user(
         setattr(current_user, field, value)
     
     await db.flush()
-    await db.refresh(current_user)
-    
-    return UserResponse(
-        id=current_user.id,
-        email=current_user.email,
-        name=current_user.name,
-        handle=current_user.handle,
-        avatar_url=current_user.avatar_url,
-        bio=current_user.bio,
-        location=current_user.location,
-        website=current_user.website,
-        stats=UserStats(
-            followers=current_user.followers_count,
-            following=current_user.following_count
-        ),
-        is_verified=current_user.is_verified,
-        created_at=current_user.created_at
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.interests))
+        .where(User.id == current_user.id)
     )
+    user = result.scalar_one_or_none() or current_user
+    
+    return _user_to_response(user)
 
 
 @router.post("/{handle}/follow", status_code=status.HTTP_200_OK)
@@ -238,7 +250,7 @@ async def get_user_following(
     ]
 
 
-@router.put("/me/interests", status_code=status.HTTP_200_OK)
+@router.put("/me/interests", response_model=UserResponse, status_code=status.HTTP_200_OK)
 async def update_user_interests(
     data: UserInterests,
     db: DbSession,
@@ -247,6 +259,7 @@ async def update_user_interests(
     """
     Update current user's interests and languages.
     """
+    await db.refresh(current_user, attribute_names=["interests"])
     # Clear existing interests
     current_user.interests = []
     
@@ -265,4 +278,12 @@ async def update_user_interests(
     if data.languages:
         current_user.language = data.languages[0]  # Primary language
     
-    return {"message": "Interests updated successfully"}
+    await db.flush()
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.interests))
+        .where(User.id == current_user.id)
+    )
+    user = result.scalar_one_or_none() or current_user
+    
+    return _user_to_response(user)
